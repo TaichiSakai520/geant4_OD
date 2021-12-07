@@ -1,0 +1,99 @@
+#ifndef OBDEnergy_h
+#define OBDEnergy_h 1
+
+#include "G4ThreeVector.hh"
+#include "G4ParticleMomentum.hh"
+#include "G4Step.hh"
+#include "G4SystemOfUnits.hh"
+
+#include "kuFUNC.hh"
+
+class OBDEnergy
+{
+public:
+  OBDEnergy(){};
+  virtual ~OBDEnergy(){};
+
+public:
+  //  static void PostStepDoIt(const G4Step &pStep);
+
+  static void ResetTotEdep()
+  {
+    LS_totEdep = 0.0;
+    LS_scintCentroidSum *= 0.0;
+    /*
+    Ba_totEdep =  0.0;
+    Ba_scintCentroidSum *= 0.0;
+
+    Xe_totEdep =  0.0;
+    Xe_scintCentroidSum *= 0.0;
+    */
+  }
+
+  // -------------- LS
+  static G4double LS_GetTotEdep() { return LS_totEdep; }
+  static G4ThreeVector LS_GetScintCentroid()
+  {
+    //return scintCentroidSum/totEdep;
+    if (LS_totEdep <= 0)
+    {
+      G4ThreeVector xx(-1000 * cm, -1000 * cm, -1000 * cm);
+      return xx;
+    }
+    return LS_scintCentroidSum / LS_totEdep;
+  }
+  /*
+  // -------------- Balloon
+  static G4double Ba_GetTotEdep() { return Ba_totEdep; }
+  static G4ThreeVector Ba_GetScintCentroid() {
+    //return scintCentroidSum/totEdep;
+    if(Ba_totEdep<=0){
+      G4ThreeVector xx(-1000*cm,-1000*cm,-1000*cm);
+      return xx;
+    }
+    return Ba_scintCentroidSum/Ba_totEdep;
+  }
+
+  // -------------- XeLS
+  static G4double Xe_GetTotEdep() { return Xe_totEdep; }
+  static G4ThreeVector Xe_GetScintCentroid() {
+    //return scintCentroidSum/totEdep;
+    if(Xe_totEdep<=0){
+      G4ThreeVector xx(-1000*cm,-1000*cm,-1000*cm);
+      return xx;
+    }
+    return Xe_scintCentroidSum/Xe_totEdep;
+  }
+  */
+
+  static void PostStepDoIt(const G4Step &pStep);
+
+  static G4double ElectronToVisible_Step(G4double KineticEnergy, G4double TotalEnergyDeposit);
+  static G4double ProtonToVisible_Step(G4double KineticEnergy, G4double TotalEnergyDeposit);
+  static G4double GammaToVisible_Step(G4double KineticEnergy, G4double TotalEnergyDeposit);
+  static void enableVisibleEnergy() { _enableVisibleEnergy = true; }
+  static void disableVisibleEnergy() { _enableVisibleEnergy = false; }
+
+protected:
+  static G4double LS_totEdep;
+  static G4ThreeVector LS_scintCentroidSum;
+  /*
+  static G4double Ba_totEdep;
+  static G4ThreeVector Ba_scintCentroidSum;
+
+  static G4double Xe_totEdep;
+  static G4ThreeVector Xe_scintCentroidSum;
+  */
+  static kuFUNC *_Electron;
+  static kuFUNC *_Proton;
+  static kuFUNC *_Gamma;
+  static G4double _Electron_Emin;
+  static G4double _Electron_Emax;
+  static G4double _Proton_Emin;
+  static G4double _Proton_Emax;
+  static G4double _Gamma_Emin;
+  static G4double _Gamma_Emax;
+  static bool _enableVisibleEnergy;
+};
+
+#endif

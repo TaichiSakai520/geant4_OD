@@ -1,0 +1,354 @@
+#define ENRICH 0
+#define NA     1
+
+// ===========================================================================
+//                         DetectorConstruction.cc
+// ===========================================================================
+#include "DetectorConstruction.hh"
+#include "G4Material.hh"
+#include "G4Box.hh"
+#include "G4LogicalVolume.hh"
+#include "G4VPhysicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4VisAttributes.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4Tubs.hh"
+#include "G4NistManager.hh"
+// ===========================================================================
+//                            class description
+// ===========================================================================
+
+/////////////////////////////////////////////
+DetectorConstruction::DetectorConstruction()
+/////////////////////////////////////////////
+{
+}
+
+/////////////////////////////////////////////
+DetectorConstruction::~DetectorConstruction()
+/////////////////////////////////////////////
+{
+}
+/////////////////////////////////////////////
+void DetectorConstruction::DefineMaterials()
+/////////////////////////////////////////////
+{
+  G4String symbol;
+  G4double a, z, density;  // a = means mass of a moll, z = means # of protons
+#if ENRICH // for enrichment
+  G4int iz, n;             // iz = # of protons in an isotope
+                           // n = # of nucleons in an iaotope
+  G4double abundance;
+#endif
+  G4int ncomponents, natoms;
+  G4double fractionmass;
+  G4double /*density_0,*/density_1,density_2;
+
+// define Elements
+  G4Element* H  = new G4Element("Hydrogen", symbol="H"  , z = 1.,  a = 1.01*g/mole);
+  G4Element* C  = new G4Element("Carbon"  , symbol="C"  , z = 6.,  a = 12.01*g/mole);
+  G4Element* N  = new G4Element("Nitrogen", symbol="N"  , z = 7.,  a = 14.01*g/mole);
+  G4Element* O  = new G4Element("Oxygen"  , symbol="O"  , z = 8.,  a = 16.00*g/mole);
+  G4Element* Br = new G4Element("Bromine" , symbol="Br" , z = 35., a = 79.90*g/mole);
+// Elements of sea-salts
+  G4Element* Na = new G4Element("Sodium"  , symbol="Na" , z = 11., a = 22.99*g/mole);
+  G4Element* Cl = new G4Element("Chlorine", symbol="Cl" , z = 17., a = 35.45*g/mole);
+  G4Element* Mg = new G4Element("Magnesium",symbol="Mg" , z = 12., a = 24.305*g/mole);
+  G4Element* S  = new G4Element("Sulfur"  , symbol="S"  , z = 16., a = 32.1*g/mole);
+  G4Element* Ca = new G4Element("Calcium" , symbol="Ca" , z = 20., a = 40.08*g/mole);
+  G4Element* K  = new G4Element("Potassium",symbol="K"  , z = 19., a = 39.10*g/mole);
+  G4Element* B  = new G4Element("Boron"   , symbol="B"  , z = 5.,  a = 10.81*g/mole);
+  G4Element* Sr = new G4Element("Strontium",symbol="Sr" , z = 38., a = 87.62*g/mole);
+  G4Element* F  = new G4Element("Fluorine", symbol="F"  , z = 9.,  a = 18.9984*g/mole);
+ 
+#if NA
+  //G4Element* Li = new G4Element("Lithium" , symbol="Li" , z = 3.,  a = 6.94*g/mole);
+  //G4double enrich_fraction = 0.0759;
+#endif
+  //Get pointer to 'Material Manager'
+  G4NistManager* materi_Man=G4NistManager::Instance();
+  //Get stainless_steel
+  G4Material* stainless_steel=materi_Man->FindOrBuildMaterial("G4_STAINLESS-STEEL");
+  
+ 
+  std::cout << stainless_steel << std::endl;
+// for enrichment
+
+// define an Element from isotopes, by relative abundance
+//#if ENRICH
+  //G4Isotope* Li6 = new G4Isotope("Li6", iz=3, n=6, a=6.01512*g/mole);
+  //G4Isotope* Li7 = new G4Isotope("Li7", iz=3, n=7, a=7.01600*g/mole);
+  //// setting Li6 ratio ////
+  //G4double enrich_fraction = 0.3;
+  //G4Element* Li = new G4Element("enrichmed Lithium",symbol="Li", ncomponents=2);
+  //Li -> AddIsotope(Li6, abundance = enrich_fraction);
+  //Li -> AddIsotope(Li7, abundance = 1.0-enrich_fraction);
+  //#endif
+
+
+// define a material from elements.   case 1: chemical molecule
+
+  // Pseudo-cumene -- (C9 H12) also called 1,2,4-Trimethybenzene
+  G4Material* PC = new G4Material("PC", density=0.8758*g/cm3, ncomponents=2);
+  PC -> AddElement(C, natoms=9);
+  PC -> AddElement(H, natoms=12);
+
+  // Polyoxyethylene(10) Octylephenyl Ether -- (C8H17C6H4O(CH2CH2O)10H) -> Triton-X-100
+  G4Material* POE = new G4Material("POE", density=1.07*g/cm3, ncomponents=3);
+  POE -> AddElement(C, natoms=34);
+  POE -> AddElement(H, natoms=62);
+  POE -> AddElement(O, natoms=11);
+
+  // PPO -- (C15 H11 N 0) also called DPO, 2,5-diphenyloxazole
+  G4Material* PPO = new G4Material("PPO", density=1.00*g/cm3, ncomponents=4);
+  PPO -> AddElement(C, natoms=15);
+  PPO -> AddElement(H, natoms=11);
+  PPO -> AddElement(N, natoms=1);
+  PPO -> AddElement(O, natoms=1);
+
+  // bis_MSB -- (C24 H22) also called bis-MSB, 1,4-Bis(2-methylstyryl)benzene
+  G4Material* bis_MSB = new G4Material("bis_MSB", density=1.00*g/cm3, ncomponents=2);
+  bis_MSB -> AddElement(C, natoms=24);
+  bis_MSB -> AddElement(H, natoms=22);
+
+  // LiBr   
+  //G4Material* LiBr = new G4Material("LiBr", density=3.460*g/cm3, ncomponents=2);
+  //LiBr -> AddElement(Li,  natoms=1);
+  //LiBr -> AddElement(Br,  natoms=1);
+
+  // Water -- (H2O)
+  G4Material* Water = new G4Material("Water", density=1.00*g/cm3, ncomponents=2);
+  Water -> AddElement(H, natoms=2);
+  Water -> AddElement(O, natoms=1);
+  //Carbon
+  G4Material* C_M=new G4Material("Carbon_M",z=6.0,a=12.01*g/mole,density=1.8*g/cm3);
+
+//define sea-salts
+  //NaCl
+  G4Material* NaCl = new G4Material("NaCl",density=2.16*g/cm3,ncomponents=2);
+  NaCl -> AddElement(Na,natoms=1);
+  NaCl -> AddElement(Cl,natoms=1);
+  //MgCl2_6H2O
+  G4Material* MgCl2_6H2O = new G4Material("MgCl2_6H2O",density=1.569*g/cm3,ncomponents=4);
+  MgCl2_6H2O -> AddElement(Mg,natoms=1);
+  MgCl2_6H2O -> AddElement(Cl,natoms=2);
+  MgCl2_6H2O -> AddElement(H,natoms=12);
+  MgCl2_6H2O -> AddElement(O,natoms=6);
+  //Na2SO4
+  G4Material* Na2SO4 = new G4Material("Na2SO4",density=2.7*g/cm3,ncomponents=3);
+  Na2SO4 -> AddElement(Na,natoms=2);
+  Na2SO4 -> AddElement(S,natoms=1);
+  Na2SO4 -> AddElement(O,natoms=4);
+  //CaCl2
+  G4Material* CaCl2 = new G4Material("CaCl2",density=2.15*g/cm3,ncomponents=2);
+  CaCl2 -> AddElement(Ca,natoms=1);
+  CaCl2 -> AddElement(Cl,natoms=2);
+  //KCl
+  G4Material* KCl = new G4Material("KCl",density=1.987*g/cm3,ncomponents=2);
+  KCl -> AddElement(K,natoms=1);
+  KCl -> AddElement(Cl,natoms=1);
+  //NaHCO3
+  G4Material* NaHCO3 = new G4Material("NaHCO3",density=2.2*g/cm3,ncomponents=4);
+  NaHCO3-> AddElement(Na,natoms=1);
+  NaHCO3-> AddElement(H,natoms=1);
+  NaHCO3-> AddElement(C,natoms=1);
+  NaHCO3-> AddElement(O,natoms=3);
+  //KBr
+  G4Material* KBr = new G4Material("KBr",density=2.75*g/cm3,ncomponents=2);
+  KBr-> AddElement(K,natoms=1);
+  KBr-> AddElement(Br,natoms=1);
+  //H3BO3
+  G4Material* H3BO3 = new G4Material("H3BO3",density=1.435*g/cm3,ncomponents=3);
+   H3BO3-> AddElement(H,natoms=3);
+   H3BO3-> AddElement(B,natoms=1);
+   H3BO3-> AddElement(O,natoms=3);
+  //SrCl2_6H2O
+  G4Material* SrCl2_6H2O = new G4Material("SrCl2_6H2O",density=1.93*g/cm3,ncomponents=4);
+  SrCl2_6H2O-> AddElement(Sr,natoms=1);
+  SrCl2_6H2O-> AddElement(Cl,natoms=2);
+  SrCl2_6H2O-> AddElement(H,natoms=12);
+  SrCl2_6H2O-> AddElement(O,natoms=6);
+  //NaF
+  G4Material* NaF = new G4Material("NaF",density=2.79*g/cm3,ncomponents=2);
+  NaF-> AddElement(Na,natoms=1);
+  NaF-> AddElement(F,natoms=1);
+
+
+
+
+  // define a material from elements and/or others materials (mixture of mixtures)
+
+  // LiBr-saturate-solution (LiBr:186.8g/100gWater)
+  // density_0 = (3.460*0.6513 + 1.00*0.3487)*g/cm3;
+  //G4Material* LiBrWater = new G4Material("LiBrWater", density_0, ncomponents=2);
+  //LiBrWater -> AddMaterial(LiBr,  fractionmass = 0.6513);
+  //LiBrWater -> AddMaterial(Water, fractionmass = 0.3487);
+
+  // My Cocktail
+  G4double ratio_PC  = 0.6;  // <setting value>
+  G4double ratio_POE = 0.4;  // <setting value>
+
+  density_1 = (((0.8758*ratio_PC*1e3) + (1.07*ratio_POE*1e3) + 2.0 + 0.5) / 1000)*g/cm3;
+  G4double PPO_fraction = 2.0*g/(1e3*cm3*density_1); // 2.0 g/l  <setting value>
+  G4double bis_fraction = 0.5*g/(1e3*cm3*density_1); // 0.5 g/l  <setting value>
+
+  G4Material* Cocktail = new G4Material("Cocktail", density_1, ncomponents=4);
+  Cocktail -> AddMaterial(PC,      fractionmass = ratio_PC/(1.0 + PPO_fraction + bis_fraction));
+  Cocktail -> AddMaterial(POE,     fractionmass = ratio_POE/(1.0 + PPO_fraction + bis_fraction));
+  Cocktail -> AddMaterial(PPO,     fractionmass = PPO_fraction/(1.0 + PPO_fraction + bis_fraction));
+  Cocktail -> AddMaterial(bis_MSB, fractionmass = bis_fraction/(1.0 + PPO_fraction + bis_fraction));
+
+  // LS = (LiBrWater) + (cocktail) -- Water includ : 16%
+  G4double Water_ratio = 0.2;  // <setting value>
+  G4double LiBrWater_fraction = 1.0 / (1.0+(0.3487/Water_ratio));
+  G4double Cocktail_fraction = 1.0 - LiBrWater_fraction; 
+
+  //density_2 = density_0*LiBrWater_fraction + density_1*Cocktail_fraction;
+
+  G4double atm=101300*pascal;
+
+  density_2 = 1.00*0.2+density_1*0.8;
+  G4Material* LS = new G4Material("LS", density_2, ncomponents=2,kStateLiquid,276*kelvin,201*atm);
+  LS-> AddMaterial(/*LiBrWater*/Water, fractionmass = LiBrWater_fraction);
+  LS-> AddMaterial(Cocktail, fractionmass = Cocktail_fraction);
+  
+  //stainless=(stainless_steel)+(carbon)--carbon include : 1%
+  G4Material* stainless=new G4Material("stainless",7.938*g/cm3,ncomponents=2,kStateSolid,276*kelvin,201*atm);
+  stainless->AddMaterial(stainless_steel,fractionmass=0.99);
+  stainless->AddMaterial(C_M,fractionmass=0.01);
+  //sea-salt ratio
+  //NaCl : 58.49%
+  //MgCl2_6H2O : 26.46%
+  //Na2SO4 : 9.75%
+  //CaCl2 : 2.765%
+  //KCl : 1.645% 
+  //NaHCO3 : 0.477%
+  //KBr : 0.238%
+  //H3BO3 : 0.071%
+  //SrCl2_6H2O : 0.095%
+  //NaF : 0.007%
+  G4double density_s=((1.0*0.965)+(2.16*0.035*0.5849)+(1.569*0.035*0.2646)+(2.7*0.035*0.0975)+(2.15*0.035*0.02765)+(1.987*0.035*0.01645)+(2.2*0.035*0.00477)+(2.75*0.035*0.00238)+(1.435*0.035*0.00071)+(1.93*0.035*0.00095)+(2.79*0.035*0.00007))*g/cm3;
+  
+//sea=(water)+(sea-salts)--sea-salts include : 3.5%
+  G4Material* sea=new G4Material("sea",density_s,ncomponents=11,kStateLiquid,276*kelvin,201*atm);
+  sea->AddMaterial(Water,fractionmass=0.965);
+  sea->AddMaterial(NaCl,fractionmass=0.035*0.5849);
+  sea->AddMaterial(MgCl2_6H2O,fractionmass=0.035*0.2646);
+  sea->AddMaterial(Na2SO4,fractionmass=0.035*0.0975);
+  sea->AddMaterial(CaCl2,fractionmass=0.035*0.02765);
+  sea->AddMaterial(KCl,fractionmass=0.035*0.01645);
+  sea->AddMaterial(NaHCO3,fractionmass=0.035*0.00477);
+  sea->AddMaterial(KBr,fractionmass=0.035*0.00238);
+  sea->AddMaterial(H3BO3,fractionmass=0.035*0.00071);
+  sea->AddMaterial(SrCl2_6H2O,fractionmass=0.035*0.00095);
+  sea->AddMaterial(NaF,fractionmass=0.035*0.00007);
+
+  //paraffin buffer
+    G4Material *paraffin=new G4Material("paraffin",0.76*g/cm3,ncomponents=2,kStateLiquid,276*kelvin,201*atm);
+  paraffin->AddElement(C,natoms=25);
+  paraffin->AddElement(H,natoms=52);
+
+  //acrylic resin
+  G4Material *acrylic=new G4Material("acrylic",1.18*g/cm3,ncomponents=3,kStateSolid,276*kelvin,201*atm);
+  acrylic->AddElement(C,natoms=5);
+  acrylic->AddElement(O,natoms=2);
+  acrylic->AddElement(H,natoms=8);
+
+  
+  // concentration : 6Li[wt%] 
+  //G4double concentration = LiBrWater_fraction * 0.6513 * (6.94/86.45) * enrich_fraction * 100.0;  
+  //G4cerr << "6Li = " << concentration << G4endl;
+  }
+
+
+
+////////////////////////////////////////////////////
+G4VPhysicalVolume* DetectorConstruction::Construct()
+////////////////////////////////////////////////////
+{
+  // define materials
+  DefineMaterials();
+
+  G4Material* mate;
+  G4VisAttributes* va;
+
+  // ==============================================================
+  //                          world volume
+  // ==============================================================
+  G4Box* worldSolid= new G4Box("world", 20.*m, 20.*m, 20.*m);
+
+  //mate= G4Material::GetMaterial("Cocktail");
+  mate= G4Material::GetMaterial("sea");
+  G4LogicalVolume* worldLV= new G4LogicalVolume(worldSolid, mate, "world");
+
+  G4PVPlacement* world= new G4PVPlacement(0,               // no rotation
+                                          G4ThreeVector(), // translation position
+                                          "world",         // its name
+					  worldLV,         // its world volume
+                                          0,               // its mother volume
+                                          false,           // no boolean operation
+                                          0);              // its copy number
+  // vis. attributes
+  va= new G4VisAttributes(G4Color(1.,1.,1.));
+  //va-> SetVisibility(false);
+  worldLV-> SetVisAttributes(va);
+  //Define Detector
+  //G4double i_diametor_De = 1.0*m;  //inner diameter
+   G4double o_radius_De = 8.016*m;  //outer diameter
+   G4double leng_Z_De = 18.032*m;
+   G4Tubs* Solid_De = new G4Tubs( "Solid_De",0., o_radius_De, leng_Z_De/2.0, 0.,
+                                360.*deg );
+
+   // Define logical volume
+   G4Material* materi_De;
+     materi_De= G4Material::GetMaterial("stainless");
+   G4LogicalVolume* logVol_De = new G4LogicalVolume( Solid_De, materi_De, "logVol_De");
+                                          
+
+   // Placement of logical volume
+   //G4double pos_X_LogV = 0.0*cm;           // X-location LogV
+   //G4double pos_Y_LogV = 0.0*cm;           // Y-location LogV
+   //G4double pos_Z_LogV = 0.0*cm;           // Z-location LogV
+   //auto threeVect_LogV = G4ThreeVector( pos_X_LogV, pos_Y_LogV, pos_Z_LogV );
+   //auto rotMtrx_LogV = G4RotationMatrix();
+   //auto trans3D_LogV = G4Transform3D( rotMtrx_LogV, threeVect_LogV );
+
+   G4int copyNum_LogV_De = 1000;                // Set ID number of LogV
+   G4PVPlacement* De_p=new G4PVPlacement( 0,G4ThreeVector(), "PhysVol_De", logVol_De, world,
+                      false, copyNum_LogV_De );
+
+   //fill paraffin as buffer
+     G4double radius_para=8*m;
+   G4double leng_Z_para=18*m;
+    G4Tubs* Solid_para = new G4Tubs("Solid_para", 0.0,radius_para,leng_Z_para/2.0, 0.0, 360.0*deg);
+   G4Material* materi_para = G4Material::GetMaterial("paraffin");
+   G4LogicalVolume* logVol_para =new G4LogicalVolume(Solid_para,materi_para,"logVol_para");
+    G4int copyNum_LogV_para=2000;
+    G4PVPlacement* para_p=new G4PVPlacement(0,G4ThreeVector(),"PhysVol_para",logVol_para,De_p,false,copyNum_LogV_para);
+
+   //make acrylic vessel
+   G4double radius_ac=6.05*m;
+   G4double leng_Z_ac=14.1*m;
+   G4Tubs* Solid_ac = new G4Tubs("Solid_ac", 0.0,radius_ac,leng_Z_ac/2.0, 0.0, 360.0*deg);
+   G4Material* materi_ac = G4Material::GetMaterial("acrylic");
+   G4LogicalVolume* logVol_ac =new G4LogicalVolume(Solid_ac,materi_ac,"logVol_ac");
+    G4int copyNum_LogV_ac=3000;
+    G4PVPlacement* ac_p=new G4PVPlacement(0,G4ThreeVector(),"PhysVol_ac",logVol_ac,para_p,false,copyNum_LogV_ac);
+
+  //fill the ditector with LS
+   G4double radius_LS=6.*m;
+   G4double leng_Z_LS=14.*m;
+    G4Tubs* Solid_LS = new G4Tubs("Solid_LS", 0.0,radius_LS,leng_Z_LS/2.0, 0.0, 360.0*deg);
+   G4Material* materi_LS = G4Material::GetMaterial("LS");
+   G4LogicalVolume* logVol_LS =new G4LogicalVolume(Solid_LS,materi_LS,"logVol_LS");
+    G4int copyNum_LogV_LS=4000;
+    G4PVPlacement* LS_p=new G4PVPlacement(0,G4ThreeVector(),"PhysVol_LS",logVol_LS,ac_p,false,copyNum_LogV_LS);
+   
+  // ==============================================================
+  //                      return the world volume
+  // ==============================================================
+  return world;
+
+}
+
+

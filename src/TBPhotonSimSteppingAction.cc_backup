@@ -1,0 +1,186 @@
+#include "TBPhotonSimSteppingAction.hh"
+#include "TBPhotonSimEventAction.hh"
+#include "G4Step.hh"
+#include "G4StepPoint.hh"
+#include "G4Track.hh"
+#include "G4RunManager.hh"
+#include "G4TransportationManager.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4PhysicalConstants.hh" //test
+#include "G4Event.hh"							//test
+#include "G4EventManager.hh"			//test
+#include "G4UnitsTable.hh"				//test
+#include "G4SteppingManager.hh"
+#include "G4TouchableHandle.hh"
+
+#include <iomanip>
+
+#include "G4OpticalPhoton.hh"
+#include "G4Triton.hh"
+#include "G4Alpha.hh"
+#include "G4Neutron.hh"
+#include "G4Deuteron.hh"
+#include "OBDEnergy.hh"
+
+std::vector<TBPhotonSimCaptureData> TBPhotonSimSteppingAction::_capturedata;
+std::vector<TBPhotonSimEdepData> TBPhotonSimSteppingAction::_edepdata;
+G4int TBPhotonSimSteppingAction::_processID = 0;
+
+TBPhotonSimSteppingAction::TBPhotonSimSteppingAction()
+{
+	_gNavigator = 0;
+}
+
+TBPhotonSimSteppingAction::~TBPhotonSimSteppingAction()
+{
+}
+
+void TBPhotonSimSteppingAction::UserSteppingAction(const G4Step *aStep)
+{
+	G4StepPoint *point1 = aStep->GetPreStepPoint();
+	G4StepPoint *point2 = aStep->GetPostStepPoint();
+	//if(point1->GetStepStatus() == fGeomBoundary)
+	G4TouchableHandle touch1 = point1->GetTouchableHandle();
+	G4TouchableHandle touch2 = point2->GetTouchableHandle();
+	G4VPhysicalVolume *volume = touch1->GetVolume();
+
+	//post step copynumber
+	G4int copyNumber = touch2->GetCopyNumber();
+	// G4Track* fTrack=aStep->GetTrack();
+
+	G4StepPoint *preStepPoint = aStep->GetPreStepPoint();
+	G4StepPoint *postStepPoint = aStep->GetPostStepPoint();
+
+	G4Track *track = aStep->GetTrack();
+	TBPhotonSimEdepData edata;
+
+	edata.pos = 0.5 * (preStepPoint->GetPosition() + postStepPoint->GetPosition());
+	edata.mon = track->GetMomentum();
+	edata.length = (postStepPoint->GetPosition() - preStepPoint->GetPosition()).mag();
+	//	edata.kin = track->GetKineticEnergy();
+	edata.kin = preStepPoint->GetKineticEnergy();
+	edata.time = track->GetGlobalTime();
+	edata.particleid = track->GetDefinition()->GetPDGEncoding();
+	edata.edep = aStep->GetTotalEnergyDeposit();
+	//	if (postStepPoint->GetProcessDefinedStep()->GetProcessName() == NULL)
+	edata.ID = copyNumber;
+	edata.ParticleName = track->GetDynamicParticle()->GetParticleDefinition()->GetParticleName();
+
+	if (aStep->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName() == "Transportation")
+	{
+		edata.absorbFlug = true;
+	}
+	else
+	{
+		edata.absorbFlug = false;
+	}
+
+	//	std::cout << "here1 " << track->GetCurrentStepNumber() << std::endl;
+	OBDEnergy::PostStepDoIt(*aStep);
+	edata.photonCount = false;
+	if (track->GetDynamicParticle()->GetParticleDefinition()->GetParticleName() == "opticalphoton" && track->GetCurrentStepNumber() == 1 && track->GetParentID() > 0)
+	{
+		edata.photonCount = true;
+	}
+
+	if (track->GetDynamicParticle()->GetParticleDefinition()->GetParticleName() == "mu-" && track->GetCurrentStepNumber() == 1 && track->GetParentID() == 0)
+	{
+		edata.InitEnergy = preStepPoint->GetKineticEnergy();
+		edata.Initx = preStepPoint->GetPosition().x();
+		edata.Inity = preStepPoint->GetPosition().y();
+		edata.Initz = preStepPoint->GetPosition().z();
+		edata.xDirection = preStepPoint->GetMomentumDirection().x();
+		//G4cout << " here2 " << preStepPoint->GetMomentumDirection().x() << G4endl;
+		edata.yDirection = preStepPoint->GetMomentumDirection().y();
+		edata.zDirection = preStepPoint->GetMomentumDirection().z();
+		edata.FirstRecord = true;
+	}
+	// -------------------------kill secondaries-------------------------
+
+	if (track->GetParentID() != 0 && track->GetDynamicParticle()->GetParticleDefinition()->GetParticleName() != "neutron")
+	{
+		track->SetTrackStatus(fKillTrackAndSecondaries);
+	}
+
+	_edepdata.push_back(edata);
+	//	std::cout << copyNumber << std::endl;
+
+	//	std::cout << copyNumber << std::endl;
+
+	// end record energy deposit
+
+	// start record neutron capture
+	if (track->GetParticleDefinition() != G4Neutron::NeutronDefinition())
+		return;
+
+	// case NeutronCapture
+	if (aStep->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName() == "nCapture")
+	{
+		const G4TrackVector *fSec = aStep->GetSecondary();
+		G4bool flagdeuteron = false;
+		for (size_t lp1 = 0; lp1 < (*fSec).size(); lp1++)
+		{
+			if ((*fSec)[lp1]->GetDefinition() == G4Deuteron::DeuteronDefinition())
+				flagdeuteron = true;
+		}
+
+		if ((*fSec).size() > 0)
+		{
+			for (size_t lp1 = 0; lp1 < (*fSec).size(); lp1++)
+			{
+				if ((*fSec)[lp1]->GetCreatorProcess()->GetProcessName() == "nCapture")
+				{
+					TBPhotonSimCaptureData tdata;
+					tdata.pos = (*fSec)[lp1]->GetPosition();
+					tdata.mon = (*fSec)[lp1]->GetMomentum();
+					tdata.kin = (*fSec)[lp1]->GetKineticEnergy();
+					tdata.time = (*fSec)[lp1]->GetGlobalTime();
+					tdata.pid = 1;
+					tdata.ID = copyNumber;
+					tdata.name = (*fSec)[lp1]->GetDefinition()->GetParticleName();
+					_capturedata.push_back(tdata);
+				}
+			}
+		}
+		if (flagdeuteron == true)
+			_processID = 1;
+		else
+			_processID = 3;
+	}
+	else if (aStep->GetPostStepPoint()->GetProcessDefinedStep()->GetProcessName() == "inelastic")
+	{
+
+		const G4TrackVector *fSec = aStep->GetSecondary();
+		if ((*fSec).size() > 0)
+		{
+			G4bool flagnalpha = false;
+			G4bool flagtritium = false;
+			for (size_t lp1 = 0; lp1 < (*fSec).size(); lp1++)
+			{
+				if ((*fSec)[lp1]->GetDefinition() == G4Triton::TritonDefinition())
+					flagtritium = true;
+				if ((*fSec)[lp1]->GetDefinition() == G4Alpha::AlphaDefinition())
+					flagnalpha = true;
+			}
+
+			for (size_t lp1 = 0; lp1 < (*fSec).size(); lp1++)
+			{
+				if (flagnalpha == true && (*fSec)[lp1]->GetCreatorProcess()->GetProcessName() == "inelastic")
+				{
+					TBPhotonSimCaptureData tdata;
+					tdata.pos = (*fSec)[lp1]->GetPosition();
+					tdata.mon = (*fSec)[lp1]->GetMomentum();
+					tdata.kin = (*fSec)[lp1]->GetKineticEnergy();
+					tdata.time = (*fSec)[lp1]->GetGlobalTime();
+					tdata.pid = 2;
+					tdata.name = (*fSec)[lp1]->GetDefinition()->GetParticleName();
+					_capturedata.push_back(tdata);
+					if (flagtritium == true)
+						_processID = 2;
+					else
+						_processID = 4;
+				}
+			}
+		}
+	}
+}

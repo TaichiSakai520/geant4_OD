@@ -1,0 +1,195 @@
+
+//
+// ********************************************************************
+// * DISCLAIMER                                                       *
+// *                                                                  *
+// * The following disclaimer summarizes all the specific disclaimers *
+// * of contributors to this software. The specific disclaimers,which *
+// * govern, are listed with their locations in:                      *
+// *   http://cern.ch/geant4/license                                  *
+// *                                                                  *
+// * Neither the authors of this software system, nor their employing *
+// * institutes,nor the agencies providing financial support for this *
+// * work  make  any representation or  warranty, express or implied, *
+// * regarding  this  software system or assume any liability for its *
+// * use.                                                             *
+// *                                                                  *
+// * This  code  implementation is the  intellectual property  of the *
+// * GEANT4 collaboration.                                            *
+// * By copying,  distributing  or modifying the Program (or any work *
+// * based  on  the Program)  you indicate  your  acceptance of  this *
+// * statement, and all its terms.                                    *
+// ********************************************************************
+//
+#include "G4SystemOfUnits.hh"
+#include "G4UnitsTable.hh" 
+#include "G4PhysicalConstants.hh"
+
+
+#include "TBPhotonSimPrimaryGeneratorAction.hh"
+#include "G4ParticleGun.hh"
+#include "G4GeneralParticleSource.hh" 
+#include "G4Event.hh"
+#include "Randomize.hh"
+#include "G4ParticleMomentum.hh"
+
+#include "TBPhotonSimSteppingAction.hh"
+#include <fstream>
+#include "G4ParticleDefinition.hh"
+#include "G4ParticleTable.hh"
+#include <vector>
+#include <sstream>
+
+
+//////////////////////////////////////////////////////
+TBPhotonSimPrimaryGeneratorAction::TBPhotonSimPrimaryGeneratorAction()
+//////////////////////////////////////////////////////
+{
+  particleGun= new G4ParticleGun;
+  //particleGun = new G4GeneralParticleSource;
+
+  fin = new std::ifstream("energy.dat");
+}
+
+///////////////////////////////////////////////////////
+TBPhotonSimPrimaryGeneratorAction::~TBPhotonSimPrimaryGeneratorAction()
+///////////////////////////////////////////////////////
+{
+  delete particleGun;
+} 
+
+///////////////////////////////////////////////////////////////////
+void TBPhotonSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
+///////////////////////////////////////////////////////////////////
+{
+  char Buffer[256];
+  G4int EventNumber;
+  G4String dummy;
+  G4String ParticleName;
+  G4double KineticEnergy;
+
+  if(!(fin -> getline(Buffer,sizeof(Buffer)))){
+    G4cerr << "ERROR : cannot read file" << G4endl;
+    abort();
+  }
+  
+  // event No
+  if(Buffer[0]=='#'){
+    std::stringstream strin(Buffer);
+    if(!(strin >> dummy >> EventNumber)){
+      G4cerr << "ERROR : invalid format for event number" << G4endl;
+      abort();
+    }
+    //std::cout<<EventNumber<<std::endl;
+    if (EventNumber % 10000 == 0){
+      G4cerr << "read: " << EventNumber << G4endl;
+    }
+    
+  }
+
+  G4double r_C10; //= 4.5*m;
+  G4double r_3;// =  pow(r_C10,3.0) * G4UniformRand();
+  G4double r; //= cbrt(r_3);
+
+  G4double random_phi; //= 2.0*pi*G4UniformRand();
+  G4double random_costheta; //= 1.0-2.0*G4UniformRand();
+  G4double random_sintheta; //= sqrt(1.0-random_costheta*random_costheta);
+  
+  G4double px_balloon; //= r * random_sintheta * cos(random_phi);
+  G4double py_balloon; //= r * random_sintheta * sin(random_phi);
+  // G4double pz_balloon;// = r * random_costheta; //+ Offset_z;
+
+  G4double pz ;
+  G4double c;//=pow(px_balloon,2.0)+pow(py_balloon,2.0);
+  //G4double R = sqrt(px_balloon*px_balloon + py_balloon*py_balloon + pz_balloon*pz_balloon);
+
+  //G4double pi=3.14159265358979323846;
+  G4double costheta;//=1.0-2.0*G4UniformRand();
+  G4double phi;//=2.0*pi*G4UniformRand();
+  G4double sintheta;//=sqrt((1.0-costheta)*(1.0+costheta));
+
+  //inner product(nai-seki)
+  G4double in_p;// = px_balloon * cos(phi)*sintheta + py_balloon * sin(phi)*sintheta + pz_balloon * costheta;
+
+  while(fin->getline(Buffer,sizeof(Buffer))){
+    if(Buffer[0]!='#'){
+      std::stringstream strin(Buffer);
+      
+      //      if(!(strin >> ParticleName >> dummy >> dummy >> KineticEnergy)){ // for Tl208, Bi214
+      if(!(strin >> ParticleName >> KineticEnergy)){  // for Pb214, C10, Be11, K40, Ac228, Bi212, new/Tl208, new/Bi214
+	G4cerr << "ERROR : invalid format for particle and energy" << G4endl;
+	abort();
+      }
+      while(1){
+	//G4double Offset_z = 2.25*m; 
+	r_C10 = 10.016*m;
+	r_3 =  pow(r_C10,3.0) * G4UniformRand();
+	r = cbrt(r_3);
+
+	random_phi = 2.0*pi*G4UniformRand();
+	random_costheta = 1.0-2.0*G4UniformRand();
+	random_sintheta = sqrt(1.0-random_costheta*random_costheta);
+  
+	px_balloon = r * random_sintheta * cos(random_phi);
+	py_balloon = r * random_sintheta * sin(random_phi);
+	// pz_balloon = r * random_costheta; //+ Offset_z;
+	//pz:cylinder
+	pz=11.016*(G4UniformRand()*2-1)*m;
+	c =pow(px_balloon,2.0) + pow(py_balloon,2.0);
+	//G4double R = sqrt(px_balloon*px_balloon + py_balloon*py_balloon + pz_balloon*pz_balloon);
+
+	//G4double pi=3.14159265358979323846;
+	costheta=1.0-2.0*G4UniformRand();
+	phi=2.0*pi*G4UniformRand();
+	sintheta=sqrt((1.0-costheta)*(1.0+costheta));
+
+	//inner product(nai-seki)
+	in_p = px_balloon * cos(phi)*sintheta + py_balloon * sin(phi)*sintheta + pz * costheta;
+	//if( c<1  && fabs(pz_balloon)<2){
+	//  if(0<in_p){
+	// G4cout<<pow(c,0.5)<<" "<<fabs(pz_balloon)<<G4endl;
+	//G4cout<<in_p<<G4endl;
+
+
+   
+   
+	if(pow(c,0.5)>8.016*m || fabs(pz)>9.016*m){
+	  if(in_p<0){
+	    //G4cout<<pow(c,0.5)<<" "<<fabs(pz_balloon)<<G4endl;
+	    // G4cout<<in_p<<G4endl;
+
+
+
+	    G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+	    particleGun->SetParticleDefinition(particleTable->FindParticle(ParticleName));
+    
+	    particleGun->SetParticleEnergy(KineticEnergy*MeV);
+	    particleGun->SetParticlePosition(G4ThreeVector(px_balloon,py_balloon,pz));
+	    particleGun->SetParticleMomentumDirection(G4ParticleMomentum(cos(phi)*sintheta,sin(phi)*sintheta,costheta));
+	    particleGun-> GeneratePrimaryVertex(anEvent);
+	    //std::cout<<KineticEnergy<<" "<<pz<<std::endl;
+	    break;
+	  }
+	  else{;}
+	}
+	else{;}
+      }
+     
+    }
+    else{break;}
+
+
+  }
+ 
+
+    
+
+
+  //  particleGun->SetParticlePosition(G4ThreeVector(0,0,0));
+  //particleGun->SetParticleMomentumDirection(G4ParticleMomentum(cos(phi)*sintheta,sin(phi)*sintheta,costheta));
+  
+  // particleGun-> GeneratePrimaryVertex(anEvent);
+} 
+
+  
+

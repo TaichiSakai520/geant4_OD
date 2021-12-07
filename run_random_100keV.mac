@@ -1,0 +1,16 @@
+# Macro file for (Li_Simulation/)"ex02.cc"
+#
+# can be run in batch, without graphic
+# or interactively: Idle> /control/execute run.mac
+
+/run/initialize
+
+/gun/particle neutron
+/gun/energy 1.0e-4
+#/gun/energy 100*keV
+
+/gun/position 0. 0. 0. cm
+
+
+/run/beamOn 1000000
+
